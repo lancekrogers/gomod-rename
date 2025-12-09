@@ -1,0 +1,15 @@
+# Binary
+gomod-rename
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+
+# Test artifacts
+*.test
+coverage.out
