@@ -11,14 +11,14 @@ func TestFind(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	tests := []struct {
-		name          string
-		setup         func(t *testing.T, root string)
-		pattern       string
-		cfg           *Config
-		wantFiles     int
-		wantMatches   int
-		wantGoMod     int
-		wantGoFiles   int
+		name        string
+		setup       func(t *testing.T, root string)
+		pattern     string
+		cfg         *Config
+		wantFiles   int
+		wantMatches int
+		wantGoMod   int
+		wantGoFiles int
 	}{
 		{
 			name: "finds matches in go.mod",

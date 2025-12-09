@@ -10,9 +10,9 @@ import (
 
 // Result holds the outcome of a replacement operation on a single file.
 type Result struct {
-	Path    string
-	Count   int
-	Err     error
+	Path  string
+	Count int
+	Err   error
 }
 
 // Replace performs string replacement on all files in the given matches.
@@ -65,9 +65,9 @@ func ReplaceInFile(path, oldStr, newStr string) Result {
 
 // Summary holds aggregate statistics from a batch replacement operation.
 type Summary struct {
-	FilesModified  int
-	TotalReplaced  int
-	Errors         int
+	FilesModified int
+	TotalReplaced int
+	Errors        int
 }
 
 // Summarize calculates aggregate statistics from a slice of Results.
