@@ -1,5 +1,5 @@
-# Binary
-gomod-rename
+# Binary output
+bin/
 
 # IDE
 .idea/
