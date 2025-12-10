@@ -20,9 +20,17 @@ build:
 install:
     go install -ldflags "-X main.version={{VERSION}}" ./cmd/gomod-rename
 
-# Run all tests
+# Run unit tests
 test:
     go test -v ./...
+
+# Run integration tests
+test-integration:
+    go test -v -tags=integration ./...
+
+# Run all tests (unit + integration)
+test-all:
+    go test -v -tags=integration ./...
 
 # Run tests with coverage
 test-coverage:
