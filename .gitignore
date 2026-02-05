@@ -13,3 +13,6 @@ bin/
 # Test artifacts
 *.test
 coverage.out
+
+# AI artifacts
+CLAUDE.md
