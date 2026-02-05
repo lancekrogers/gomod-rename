@@ -40,13 +40,13 @@ gomod-rename -v github.com/old/module github.com/new/module
 
 ### Flags
 
-| Flag | Short | Description |
-|------|-------|-------------|
-| `--write` | `-w` | Apply changes (default is dry-run preview) |
-| `--dir` | `-d` | Target directory to search (default: `.`) |
-| `--yes` | `-y` | Skip confirmation prompt |
-| `--verbose` | `-v` | Show detailed output |
-| `--version` | | Show version |
+| Flag        | Short | Description                                |
+| ----------- | ----- | ------------------------------------------ |
+| `--write`   | `-w`  | Apply changes (default is dry-run preview) |
+| `--dir`     | `-d`  | Target directory to search (default: `.`)  |
+| `--yes`     | `-y`  | Skip confirmation prompt                   |
+| `--verbose` | `-v`  | Show detailed output                       |
+| `--version` |       | Show version                               |
 
 ## Building from source
 

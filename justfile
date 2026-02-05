@@ -4,12 +4,19 @@ set dotenv-load := true
 
 VERSION := `git describe --tags --always --dirty 2>/dev/null || echo "dev"`
 
+# Modules
+[doc('Testing (unit, integration, coverage)')]
+mod test '.justfiles/test.just'
+
+[doc('Release (tag, publish, GitHub release)')]
+mod release '.justfiles/release.just'
+
 # Show available commands
 [private]
 @default:
     @echo "gomod-rename - Go module import path replacement tool"
     @echo ""
-    @just --list
+    @just --list --unsorted
 
 # Build the binary
 build:
@@ -19,31 +26,6 @@ build:
 # Install to GOPATH/bin
 install:
     go install -ldflags "-X main.version={{VERSION}}" ./cmd/gomod-rename
-
-# Run unit tests
-test:
-    go test -v ./...
-
-# Run integration tests
-test-integration:
-    go test -v -tags=integration ./...
-
-# Run all tests (unit + integration)
-test-all:
-    go test -v -tags=integration ./...
-
-# Run tests with coverage
-test-coverage:
-    go test -coverprofile=coverage.out ./...
-    go tool cover -func=coverage.out
-    @echo ""
-    @echo "HTML report: go tool cover -html=coverage.out"
-
-# Run tests with coverage and open HTML report
-test-coverage-html:
-    go test -coverprofile=coverage.out ./...
-    go tool cover -html=coverage.out -o coverage.html
-    open coverage.html
 
 # Run linter
 lint:
@@ -62,5 +44,9 @@ run *ARGS:
     go run -ldflags "-X main.version={{VERSION}}" ./cmd/gomod-rename {{ARGS}}
 
 # Verify everything passes (lint, test, build)
-check: lint test build
+check: lint _test build
     @echo "All checks passed!"
+
+[private]
+_test:
+    go test -v ./...
