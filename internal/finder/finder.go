@@ -3,6 +3,7 @@ package finder
 
 import (
 	"bufio"
+	"context"
 	"os"
 	"path/filepath"
 	"strings"
@@ -39,7 +40,7 @@ func DefaultConfig() *Config {
 
 // Find walks the directory tree starting at root and returns all files
 // containing the specified pattern. It only searches go.mod and .go files.
-func Find(root, pattern string, cfg *Config) ([]FileMatch, error) {
+func Find(ctx context.Context, root, pattern string, cfg *Config) ([]FileMatch, error) {
 	if cfg == nil {
 		cfg = DefaultConfig()
 	}
@@ -47,6 +48,10 @@ func Find(root, pattern string, cfg *Config) ([]FileMatch, error) {
 	var results []FileMatch
 
 	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+
 		if err != nil {
 			// Skip files we can't access rather than failing entirely
 			if os.IsPermission(err) {
@@ -120,7 +125,7 @@ func findMatchesInFile(path, pattern string) ([]Match, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer file.Close()
+	defer file.Close() //nolint:errcheck // read-only file handle; close error is safe to ignore
 
 	var matches []Match
 	scanner := bufio.NewScanner(file)

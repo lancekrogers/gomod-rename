@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bytes"
+	"context"
 	"os"
 	"path/filepath"
 	"strings"
@@ -17,7 +18,7 @@ func TestCLI_Run_DryRun(t *testing.T) {
 	stdin := strings.NewReader("")
 
 	c := New(stdout, stderr, stdin, "test")
-	exitCode := c.Run([]string{"-d", tmpDir, "github.com/old/repo", "github.com/new/repo"})
+	exitCode := c.Run(context.Background(), []string{"-d", tmpDir, "github.com/old/repo", "github.com/new/repo"})
 
 	if exitCode != 0 {
 		t.Errorf("Run() exit code = %d, want 0", exitCode)
@@ -47,7 +48,7 @@ func TestCLI_Run_Write(t *testing.T) {
 	stdin := strings.NewReader("y\n")
 
 	c := New(stdout, stderr, stdin, "test")
-	exitCode := c.Run([]string{"-d", tmpDir, "-w", "github.com/old/repo", "github.com/new/repo"})
+	exitCode := c.Run(context.Background(), []string{"-d", tmpDir, "-w", "github.com/old/repo", "github.com/new/repo"})
 
 	if exitCode != 0 {
 		t.Errorf("Run() exit code = %d, want 0", exitCode)
@@ -69,7 +70,7 @@ func TestCLI_Run_WriteWithYes(t *testing.T) {
 	stdin := strings.NewReader("") // No input needed with -y
 
 	c := New(stdout, stderr, stdin, "test")
-	exitCode := c.Run([]string{"-d", tmpDir, "-w", "-y", "github.com/old/repo", "github.com/new/repo"})
+	exitCode := c.Run(context.Background(), []string{"-d", tmpDir, "-w", "-y", "github.com/old/repo", "github.com/new/repo"})
 
 	if exitCode != 0 {
 		t.Errorf("Run() exit code = %d, want 0", exitCode)
@@ -91,7 +92,7 @@ func TestCLI_Run_Abort(t *testing.T) {
 	stdin := strings.NewReader("n\n") // User says no
 
 	c := New(stdout, stderr, stdin, "test")
-	exitCode := c.Run([]string{"-d", tmpDir, "-w", "github.com/old/repo", "github.com/new/repo"})
+	exitCode := c.Run(context.Background(), []string{"-d", tmpDir, "-w", "github.com/old/repo", "github.com/new/repo"})
 
 	if exitCode != 0 {
 		t.Errorf("Run() exit code = %d, want 0 (abort is not an error)", exitCode)
@@ -117,7 +118,7 @@ func TestCLI_Run_NoMatches(t *testing.T) {
 	stdin := strings.NewReader("")
 
 	c := New(stdout, stderr, stdin, "test")
-	exitCode := c.Run([]string{"-d", tmpDir, "github.com/old/repo", "github.com/new/repo"})
+	exitCode := c.Run(context.Background(), []string{"-d", tmpDir, "github.com/old/repo", "github.com/new/repo"})
 
 	if exitCode != 0 {
 		t.Errorf("Run() exit code = %d, want 0", exitCode)
@@ -134,7 +135,7 @@ func TestCLI_Run_Version(t *testing.T) {
 	stdin := strings.NewReader("")
 
 	c := New(stdout, stderr, stdin, "v1.2.3")
-	exitCode := c.Run([]string{"--version"})
+	exitCode := c.Run(context.Background(), []string{"--version"})
 
 	if exitCode != 0 {
 		t.Errorf("Run() exit code = %d, want 0", exitCode)
@@ -162,7 +163,7 @@ func TestCLI_Run_InvalidArgs(t *testing.T) {
 			stdin := strings.NewReader("")
 
 			c := New(stdout, stderr, stdin, "test")
-			exitCode := c.Run(tt.args)
+			exitCode := c.Run(context.Background(), tt.args)
 
 			if exitCode != 1 {
 				t.Errorf("Run() exit code = %d, want 1", exitCode)
@@ -177,7 +178,7 @@ func TestCLI_Run_SamePaths(t *testing.T) {
 	stdin := strings.NewReader("")
 
 	c := New(stdout, stderr, stdin, "test")
-	exitCode := c.Run([]string{"github.com/same/repo", "github.com/same/repo"})
+	exitCode := c.Run(context.Background(), []string{"github.com/same/repo", "github.com/same/repo"})
 
 	if exitCode != 1 {
 		t.Errorf("Run() exit code = %d, want 1", exitCode)
@@ -194,7 +195,7 @@ func TestCLI_Run_InvalidDirectory(t *testing.T) {
 	stdin := strings.NewReader("")
 
 	c := New(stdout, stderr, stdin, "test")
-	exitCode := c.Run([]string{"-d", "/nonexistent/path", "old", "new"})
+	exitCode := c.Run(context.Background(), []string{"-d", "/nonexistent/path", "old", "new"})
 
 	if exitCode != 1 {
 		t.Errorf("Run() exit code = %d, want 1", exitCode)
@@ -210,7 +211,7 @@ func TestCLI_Run_Verbose(t *testing.T) {
 	// Without verbose - should truncate
 	stdout1 := &bytes.Buffer{}
 	c1 := New(stdout1, &bytes.Buffer{}, strings.NewReader(""), "test")
-	c1.Run([]string{"-d", tmpDir, "github.com/old/repo", "github.com/new/repo"})
+	c1.Run(context.Background(), []string{"-d", tmpDir, "github.com/old/repo", "github.com/new/repo"})
 
 	if !strings.Contains(stdout1.String(), "more matches") {
 		t.Error("non-verbose output should truncate matches")
@@ -219,7 +220,7 @@ func TestCLI_Run_Verbose(t *testing.T) {
 	// With verbose - should show all
 	stdout2 := &bytes.Buffer{}
 	c2 := New(stdout2, &bytes.Buffer{}, strings.NewReader(""), "test")
-	c2.Run([]string{"-d", tmpDir, "-v", "github.com/old/repo", "github.com/new/repo"})
+	c2.Run(context.Background(), []string{"-d", tmpDir, "-v", "github.com/old/repo", "github.com/new/repo"})
 
 	if strings.Contains(stdout2.String(), "more matches") {
 		t.Error("verbose output should show all matches")

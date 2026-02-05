@@ -1,6 +1,7 @@
 package finder
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -229,7 +230,7 @@ import "github.com/old/repo/internal"
 			tt.setup(t, testDir)
 
 			// Run finder
-			results, err := Find(testDir, tt.pattern, tt.cfg)
+			results, err := Find(context.Background(), testDir, tt.pattern, tt.cfg)
 			if err != nil {
 				t.Fatalf("Find() error = %v", err)
 			}
@@ -281,7 +282,7 @@ func main() {
 `
 	writeFile(t, filepath.Join(tmpDir, "main.go"), content)
 
-	results, err := Find(tmpDir, "github.com/old/repo", nil)
+	results, err := Find(context.Background(), tmpDir, "github.com/old/repo", nil)
 	if err != nil {
 		t.Fatalf("Find() error = %v", err)
 	}
@@ -302,6 +303,24 @@ func main() {
 	// Second match should be on line 9 (string literal)
 	if results[0].Matches[1].LineNum != 9 {
 		t.Errorf("second match line = %d, want 9", results[0].Matches[1].LineNum)
+	}
+}
+
+func TestFind_ContextCancellation(t *testing.T) {
+	tmpDir := t.TempDir()
+	writeFile(t, filepath.Join(tmpDir, "main.go"), `package main
+import "github.com/old/repo/pkg"
+`)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel() // cancel immediately
+
+	_, err := Find(ctx, tmpDir, "github.com/old/repo", nil)
+	if err == nil {
+		t.Fatal("Find() expected error with cancelled context, got nil")
+	}
+	if err != context.Canceled {
+		t.Errorf("Find() error = %v, want context.Canceled", err)
 	}
 }
 

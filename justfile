@@ -47,7 +47,7 @@ test-coverage-html:
 
 # Run linter
 lint:
-    go vet ./...
+    golangci-lint run ./...
 
 # Format code
 fmt:

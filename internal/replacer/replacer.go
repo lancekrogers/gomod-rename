@@ -2,6 +2,7 @@
 package replacer
 
 import (
+	"context"
 	"os"
 	"strings"
 
@@ -17,11 +18,15 @@ type Result struct {
 
 // Replace performs string replacement on all files in the given matches.
 // It returns a Result for each file indicating success or failure.
-func Replace(matches []finder.FileMatch, oldStr, newStr string) []Result {
+func Replace(ctx context.Context, matches []finder.FileMatch, oldStr, newStr string) []Result {
 	results := make([]Result, 0, len(matches))
 
 	for _, fm := range matches {
-		result := ReplaceInFile(fm.Path, oldStr, newStr)
+		if ctx.Err() != nil {
+			results = append(results, Result{Path: fm.Path, Err: ctx.Err()})
+			continue
+		}
+		result := ReplaceInFile(ctx, fm.Path, oldStr, newStr)
 		results = append(results, result)
 	}
 
@@ -30,7 +35,11 @@ func Replace(matches []finder.FileMatch, oldStr, newStr string) []Result {
 
 // ReplaceInFile replaces all occurrences of oldStr with newStr in the specified file.
 // It preserves the original file permissions.
-func ReplaceInFile(path, oldStr, newStr string) Result {
+func ReplaceInFile(ctx context.Context, path, oldStr, newStr string) Result {
+	if ctx.Err() != nil {
+		return Result{Path: path, Err: ctx.Err()}
+	}
+
 	// Read the file
 	content, err := os.ReadFile(path)
 	if err != nil {
@@ -47,6 +56,11 @@ func ReplaceInFile(path, oldStr, newStr string) Result {
 
 	// Perform replacement
 	replaced := strings.ReplaceAll(original, oldStr, newStr)
+
+	// Check context before write to avoid partial state on cancellation
+	if ctx.Err() != nil {
+		return Result{Path: path, Err: ctx.Err()}
+	}
 
 	// Get original file permissions
 	info, err := os.Stat(path)

@@ -4,6 +4,7 @@ package cli
 
 import (
 	"bytes"
+	"context"
 	"io"
 	"os"
 	"os/exec"
@@ -34,7 +35,7 @@ func TestIntegration_RealProject(t *testing.T) {
 	stderr := &bytes.Buffer{}
 	c := New(stdout, stderr, strings.NewReader(""), "test")
 
-	exitCode := c.Run([]string{"-d", projectDir, "-w", "-y", oldModule, newModule})
+	exitCode := c.Run(context.Background(), []string{"-d", projectDir, "-w", "-y", oldModule, newModule})
 	if exitCode != 0 {
 		t.Fatalf("gomod-rename failed with exit code %d\nstdout: %s\nstderr: %s",
 			exitCode, stdout.String(), stderr.String())
@@ -94,7 +95,7 @@ func TestIntegration_DryRunDoesNotModify(t *testing.T) {
 	// Run in dry-run mode (no -w flag)
 	stdout := &bytes.Buffer{}
 	c := New(stdout, &bytes.Buffer{}, strings.NewReader(""), "test")
-	exitCode := c.Run([]string{"-d", projectDir, oldModule, newModule})
+	exitCode := c.Run(context.Background(), []string{"-d", projectDir, oldModule, newModule})
 
 	if exitCode != 0 {
 		t.Fatalf("dry-run failed with exit code %d", exitCode)
@@ -116,7 +117,7 @@ func TestIntegration_PartialPathMatch(t *testing.T) {
 	// Replace only the org name, not the full module path
 	stdout := &bytes.Buffer{}
 	c := New(stdout, &bytes.Buffer{}, strings.NewReader(""), "test")
-	exitCode := c.Run([]string{"-d", projectDir, "-w", "-y", "github.com/testold", "github.com/testnew"})
+	exitCode := c.Run(context.Background(), []string{"-d", projectDir, "-w", "-y", "github.com/testold", "github.com/testnew"})
 
 	if exitCode != 0 {
 		t.Fatalf("gomod-rename failed with exit code %d", exitCode)

@@ -1,6 +1,7 @@
 package replacer
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -91,7 +92,7 @@ import (
 			}
 
 			// Run replacement
-			result := ReplaceInFile(path, tt.oldStr, tt.newStr)
+			result := ReplaceInFile(context.Background(), path, tt.oldStr, tt.newStr)
 
 			// Check for unexpected errors
 			if (result.Err != nil) != tt.wantErr {
@@ -130,7 +131,7 @@ func TestReplaceInFilePreservesPermissions(t *testing.T) {
 	}
 
 	// Run replacement
-	result := ReplaceInFile(path, "github.com/old/repo", "github.com/new/repo")
+	result := ReplaceInFile(context.Background(), path, "github.com/old/repo", "github.com/new/repo")
 	if result.Err != nil {
 		t.Fatalf("ReplaceInFile() error = %v", result.Err)
 	}
@@ -156,7 +157,7 @@ func TestReplaceInFileHandlesReadOnlyError(t *testing.T) {
 		t.Fatalf("failed to write test file: %v", err)
 	}
 
-	result := ReplaceInFile(path, "github.com/old/repo", "github.com/new/repo")
+	result := ReplaceInFile(context.Background(), path, "github.com/old/repo", "github.com/new/repo")
 
 	// Should return an error because file is read-only
 	if result.Err == nil {
@@ -165,7 +166,7 @@ func TestReplaceInFileHandlesReadOnlyError(t *testing.T) {
 }
 
 func TestReplaceInFileHandlesNonExistentFile(t *testing.T) {
-	result := ReplaceInFile("/nonexistent/path/file.go", "old", "new")
+	result := ReplaceInFile(context.Background(), "/nonexistent/path/file.go", "old", "new")
 
 	if result.Err == nil {
 		t.Error("ReplaceInFile() expected error for nonexistent file, got nil")
@@ -205,7 +206,7 @@ import "github.com/other/repo"
 		}
 	}
 
-	results := Replace(matches, "github.com/old/repo", "github.com/new/repo")
+	results := Replace(context.Background(), matches, "github.com/old/repo", "github.com/new/repo")
 
 	if len(results) != 2 {
 		t.Fatalf("Replace() returned %d results, want 2", len(results))
@@ -242,6 +243,60 @@ import "github.com/other/repo"
 `
 	if string(otherGo) != wantOther {
 		t.Errorf("other.go = %q, want %q", string(otherGo), wantOther)
+	}
+}
+
+func TestReplace_ContextCancellation(t *testing.T) {
+	tmpDir := t.TempDir()
+	path := filepath.Join(tmpDir, "test.go")
+	if err := os.WriteFile(path, []byte("github.com/old/repo"), 0644); err != nil {
+		t.Fatalf("failed to write test file: %v", err)
+	}
+
+	matches := []finder.FileMatch{
+		{Path: path, IsGoMod: false},
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel() // cancel immediately
+
+	results := Replace(ctx, matches, "github.com/old/repo", "github.com/new/repo")
+
+	if len(results) != 1 {
+		t.Fatalf("Replace() returned %d results, want 1", len(results))
+	}
+	if results[0].Err != context.Canceled {
+		t.Errorf("Replace() error = %v, want context.Canceled", results[0].Err)
+	}
+
+	// File should be unchanged
+	content, _ := os.ReadFile(path)
+	if string(content) != "github.com/old/repo" {
+		t.Error("file should not be modified when context is cancelled")
+	}
+}
+
+func TestReplaceInFile_ContextCancellation(t *testing.T) {
+	tmpDir := t.TempDir()
+	path := filepath.Join(tmpDir, "test.go")
+	original := "github.com/old/repo"
+	if err := os.WriteFile(path, []byte(original), 0644); err != nil {
+		t.Fatalf("failed to write test file: %v", err)
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel() // cancel immediately
+
+	result := ReplaceInFile(ctx, path, "github.com/old/repo", "github.com/new/repo")
+
+	if result.Err != context.Canceled {
+		t.Errorf("ReplaceInFile() error = %v, want context.Canceled", result.Err)
+	}
+
+	// File should be unchanged
+	content, _ := os.ReadFile(path)
+	if string(content) != original {
+		t.Error("file should not be modified when context is cancelled")
 	}
 }
 

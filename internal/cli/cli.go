@@ -3,6 +3,7 @@ package cli
 
 import (
 	"bufio"
+	"context"
 	"flag"
 	"fmt"
 	"io"
@@ -31,6 +32,25 @@ func New(stdout, stderr io.Writer, stdin io.Reader, version string) *CLI {
 	}
 }
 
+// Output helpers — stdout/stderr writes in a CLI cannot meaningfully recover
+// from write errors, so we explicitly discard them (similar to log.Println).
+
+func (c *CLI) printf(format string, a ...any) {
+	_, _ = fmt.Fprintf(c.Stdout, format, a...)
+}
+
+func (c *CLI) println(a ...any) {
+	_, _ = fmt.Fprintln(c.Stdout, a...)
+}
+
+func (c *CLI) print(a ...any) {
+	_, _ = fmt.Fprint(c.Stdout, a...)
+}
+
+func (c *CLI) errf(format string, a ...any) {
+	_, _ = fmt.Fprintf(c.Stderr, format, a...)
+}
+
 // Config holds the parsed command-line configuration.
 type Config struct {
 	Write   bool
@@ -42,35 +62,35 @@ type Config struct {
 }
 
 // Run executes the CLI with the given arguments and returns an exit code.
-func (c *CLI) Run(args []string) int {
+func (c *CLI) Run(ctx context.Context, args []string) int {
 	cfg, err := c.parseFlags(args)
 	if err != nil {
 		if err == errShowVersion {
-			fmt.Fprintf(c.Stdout, "gomod-rename %s\n", c.Version)
+			c.printf("gomod-rename %s\n", c.Version)
 			return 0
 		}
 		if err == errShowUsage {
 			return 0
 		}
-		fmt.Fprintf(c.Stderr, "Error: %v\n", err)
+		c.errf("Error: %v\n", err)
 		return 1
 	}
 
 	// Validate arguments
 	if err := c.validate(cfg); err != nil {
-		fmt.Fprintf(c.Stderr, "Error: %v\n", err)
+		c.errf("Error: %v\n", err)
 		return 1
 	}
 
 	// Find matching files
-	matches, err := finder.Find(cfg.Dir, cfg.OldPath, nil)
+	matches, err := finder.Find(ctx, cfg.Dir, cfg.OldPath, nil)
 	if err != nil {
-		fmt.Fprintf(c.Stderr, "Error scanning files: %v\n", err)
+		c.errf("Error scanning files: %v\n", err)
 		return 1
 	}
 
 	if len(matches) == 0 {
-		fmt.Fprintf(c.Stdout, "No files in '%s' contain '%s'\n", cfg.Dir, cfg.OldPath)
+		c.printf("No files in '%s' contain '%s'\n", cfg.Dir, cfg.OldPath)
 		return 0
 	}
 
@@ -79,25 +99,25 @@ func (c *CLI) Run(args []string) int {
 
 	// If dry-run, we're done
 	if !cfg.Write {
-		fmt.Fprintln(c.Stdout)
-		fmt.Fprintln(c.Stdout, "This is a dry-run. Use --write (-w) to apply changes.")
+		c.println()
+		c.println("This is a dry-run. Use --write (-w) to apply changes.")
 		return 0
 	}
 
 	// Confirm before writing
 	if !cfg.Yes {
-		fmt.Fprintln(c.Stdout)
-		fmt.Fprint(c.Stdout, "Apply these changes? [y/N]: ")
+		c.println()
+		c.print("Apply these changes? [y/N]: ")
 		if !c.confirm() {
-			fmt.Fprintln(c.Stdout, "Aborted.")
+			c.println("Aborted.")
 			return 0
 		}
 	}
 
 	// Apply changes
-	fmt.Fprintln(c.Stdout)
-	fmt.Fprintln(c.Stdout, "Applying changes...")
-	results := replacer.Replace(matches, cfg.OldPath, cfg.NewPath)
+	c.println()
+	c.println("Applying changes...")
+	results := replacer.Replace(ctx, matches, cfg.OldPath, cfg.NewPath)
 	c.printResults(results)
 
 	// Return error code if any replacements failed
@@ -135,13 +155,13 @@ func (c *CLI) parseFlags(args []string) (*Config, error) {
 	showVersion := fs.Bool("version", false, "Show version")
 
 	fs.Usage = func() {
-		fmt.Fprintf(c.Stderr, "gomod-rename - Replace Go module import paths\n\n")
-		fmt.Fprintf(c.Stderr, "Usage: gomod-rename [flags] <old-path> <new-path>\n\n")
-		fmt.Fprintf(c.Stderr, "Examples:\n")
-		fmt.Fprintf(c.Stderr, "  gomod-rename github.com/old/repo github.com/new/repo\n")
-		fmt.Fprintf(c.Stderr, "  gomod-rename -w github.com/old/repo github.com/new/repo\n")
-		fmt.Fprintf(c.Stderr, "  gomod-rename -d ./myproject -w -y github.com/old/repo github.com/new/repo\n\n")
-		fmt.Fprintf(c.Stderr, "Flags:\n")
+		c.errf("gomod-rename - Replace Go module import paths\n\n")
+		c.errf("Usage: gomod-rename [flags] <old-path> <new-path>\n\n")
+		c.errf("Examples:\n")
+		c.errf("  gomod-rename github.com/old/repo github.com/new/repo\n")
+		c.errf("  gomod-rename -w github.com/old/repo github.com/new/repo\n")
+		c.errf("  gomod-rename -d ./myproject -w -y github.com/old/repo github.com/new/repo\n\n")
+		c.errf("Flags:\n")
 		fs.PrintDefaults()
 	}
 
@@ -185,7 +205,7 @@ func (c *CLI) validate(cfg *Config) error {
 }
 
 func (c *CLI) printPreview(matches []finder.FileMatch, cfg *Config) {
-	fmt.Fprintf(c.Stdout, "Files containing '%s':\n\n", cfg.OldPath)
+	c.printf("Files containing '%s':\n\n", cfg.OldPath)
 
 	totalMatches := 0
 	goModCount := 0
@@ -204,7 +224,7 @@ func (c *CLI) printPreview(matches []finder.FileMatch, cfg *Config) {
 		if fm.IsGoMod {
 			fileType = "go.mod"
 		}
-		fmt.Fprintf(c.Stdout, "  [%s] %s\n", fileType, fm.Path)
+		c.printf("  [%s] %s\n", fileType, fm.Path)
 
 		// Show matches (limit to 5 per file unless verbose)
 		limit := 5
@@ -215,37 +235,37 @@ func (c *CLI) printPreview(matches []finder.FileMatch, cfg *Config) {
 		for i, m := range fm.Matches {
 			if i >= limit {
 				remaining := len(fm.Matches) - limit
-				fmt.Fprintf(c.Stdout, "         ... and %d more matches\n", remaining)
+				c.printf("         ... and %d more matches\n", remaining)
 				break
 			}
-			fmt.Fprintf(c.Stdout, "    %4d: %s\n", m.LineNum, strings.TrimSpace(m.Line))
+			c.printf("    %4d: %s\n", m.LineNum, strings.TrimSpace(m.Line))
 		}
-		fmt.Fprintln(c.Stdout)
+		c.println()
 	}
 
 	// Summary
-	fmt.Fprintln(c.Stdout, "---")
-	fmt.Fprintf(c.Stdout, "Summary: %d matches in %d files (%d go.mod, %d .go)\n",
+	c.println("---")
+	c.printf("Summary: %d matches in %d files (%d go.mod, %d .go)\n",
 		totalMatches, len(matches), goModCount, goFileCount)
-	fmt.Fprintf(c.Stdout, "Will replace: '%s' -> '%s'\n", cfg.OldPath, cfg.NewPath)
+	c.printf("Will replace: '%s' -> '%s'\n", cfg.OldPath, cfg.NewPath)
 }
 
 func (c *CLI) printResults(results []replacer.Result) {
 	for _, r := range results {
 		if r.Err != nil {
-			fmt.Fprintf(c.Stderr, "  ERROR: %s: %v\n", r.Path, r.Err)
+			c.errf("  ERROR: %s: %v\n", r.Path, r.Err)
 		} else if r.Count > 0 {
-			fmt.Fprintf(c.Stdout, "  Updated: %s (%d replacements)\n", r.Path, r.Count)
+			c.printf("  Updated: %s (%d replacements)\n", r.Path, r.Count)
 		}
 	}
 
 	summary := replacer.Summarize(results)
-	fmt.Fprintln(c.Stdout)
-	fmt.Fprintf(c.Stdout, "Done: %d files updated, %d total replacements", summary.FilesModified, summary.TotalReplaced)
+	c.println()
+	c.printf("Done: %d files updated, %d total replacements", summary.FilesModified, summary.TotalReplaced)
 	if summary.Errors > 0 {
-		fmt.Fprintf(c.Stdout, ", %d errors", summary.Errors)
+		c.printf(", %d errors", summary.Errors)
 	}
-	fmt.Fprintln(c.Stdout)
+	c.println()
 }
 
 func (c *CLI) confirm() bool {
