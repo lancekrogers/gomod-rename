@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/assets/hero.jpg" width="880" alt="Editor split: old Go import paths in red, new module path in green">
+</p>
+
 # gomod-rename
 
 **Rename a Go module without hunting import paths by hand.**
