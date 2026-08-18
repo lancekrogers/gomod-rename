@@ -1,19 +1,34 @@
 # gomod-rename
 
-Rename Go module import paths across an entire codebase in one command.
+**Rename a Go module without hunting import paths by hand.**
 
-## Features
+`go.mod` and every `import` that still says the old path. Dry-run
+unless you pass `-w`. Skips `vendor/` and hidden directories. Stdlib
+only.
 
-- **Dry-run by default** — preview every match before writing anything
-- **Confirmation prompt** — asks before applying changes (skip with `-y`)
-- **Targets go.mod and .go files** — handles both module declarations and import statements
-- **Skips vendor/ and hidden directories** — won't touch files you don't own
-- **Preserves file permissions** — replacement writes respect original file modes
-- **Zero external dependencies** — stdlib only
+```bash
+# see the hits
+gomod-rename github.com/old/mod github.com/you/mod
 
-## Installation
+# write them
+gomod-rename -w github.com/old/mod github.com/you/mod
+```
 
-Requires Go 1.23+.
+```
+go.mod                          module github.com/old/mod
+internal/api/client.go          "github.com/old/mod/internal/api"
+```
+
+becomes
+
+```
+go.mod                          module github.com/you/mod
+internal/api/client.go          "github.com/you/mod/internal/api"
+```
+
+## Install
+
+Needs Go 1.23+.
 
 ```bash
 go install github.com/lancekrogers/gomod-rename/cmd/gomod-rename@latest
@@ -22,57 +37,30 @@ go install github.com/lancekrogers/gomod-rename/cmd/gomod-rename@latest
 ## Usage
 
 ```bash
-# Dry-run (default) — see what would change
 gomod-rename github.com/old/module github.com/new/module
-
-# Apply changes
 gomod-rename -w github.com/old/module github.com/new/module
-
-# Skip confirmation prompt
 gomod-rename -w -y github.com/old/module github.com/new/module
-
-# Target a specific directory
 gomod-rename -d ./myproject -w github.com/old/module github.com/new/module
-
-# Verbose output (show all matches per file)
 gomod-rename -v github.com/old/module github.com/new/module
 ```
 
-### Flags
+| Flag | Short | |
+|------|-------|--|
+| `--write` | `-w` | Apply. Default is a preview. |
+| `--dir` | `-d` | Search root (default `.`) |
+| `--yes` | `-y` | No confirm prompt |
+| `--verbose` | `-v` | Every match |
+| `--version` | | Version |
 
-| Flag        | Short | Description                                |
-| ----------- | ----- | ------------------------------------------ |
-| `--write`   | `-w`  | Apply changes (default is dry-run preview) |
-| `--dir`     | `-d`  | Target directory to search (default: `.`)  |
-| `--yes`     | `-y`  | Skip confirmation prompt                   |
-| `--verbose` | `-v`  | Show detailed output                       |
-| `--version` |       | Show version                               |
-
-## Building from source
+## Build / test
 
 ```bash
-git clone https://github.com/lancekrogers/gomod-rename.git
-cd gomod-rename
-
-# With just (recommended)
 just build
-
-# Or directly with go
-go build -o bin/gomod-rename ./cmd/gomod-rename
-```
-
-## Testing
-
-```bash
-# Run tests
 just test
-
-# Lint + test + build
 just check
-
-# Coverage report
-just test-coverage
 ```
+
+Or `go build -o bin/gomod-rename ./cmd/gomod-rename`.
 
 ## License
 
